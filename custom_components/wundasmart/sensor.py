@@ -208,7 +208,7 @@ def _trv_get_room(coordinator: WundasmartDataUpdateCoordinator, device):
         return coordinator.data.get(room_id)
 
 
-def _trv_get_sensor_name(room, trv, desc: WundaSensorDescription, separate_room_devices: bool = False):
+def _trv_get_sensor_name(room, trv, desc: WundaSensorDescription, separate_room_devices: bool):
     """Return a human readable name for a TRV device"""
     device_id = int(trv["device_id"])
     hw_version = float(trv["hw_version"])
@@ -267,7 +267,7 @@ async def async_setup_entry(
                desc.name if coordinator._separate_room_devices else room["name"] + " " + desc.name,
                coordinator,
                desc,
-               room_id=wunda_id)
+               room_id=get_room_id_from_device(device))
                 for wunda_id, device, room in devices_by_type["ROOM"]
                 for desc in descriptions_by_type["ROOM"]
         ),
@@ -307,7 +307,7 @@ class Sensor(CoordinatorEntity[WundasmartDataUpdateCoordinator], SensorEntity):
         name: str,
         coordinator: WundasmartDataUpdateCoordinator,
         description: WundaSensorDescription,
-        room_id: str = None,
+        room_id: str,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
@@ -318,12 +318,8 @@ class Sensor(CoordinatorEntity[WundasmartDataUpdateCoordinator], SensorEntity):
         if (device_sn := coordinator.device_sn) is not None:
             self._attr_unique_id = f"{device_sn}.{wunda_id}.{description.key}"
         
-        # Determine device info based on whether this sensor belongs to a room
-        if room_id is not None:
-            room_device = coordinator.data.get(room_id, {})
-            self._attr_device_info = coordinator.get_room_device_info(room_id, room_device)
-        else:
-            self._attr_device_info = coordinator.device_info
+        room_device = coordinator.data.get(room_id, {})
+        self._attr_device_info = coordinator.get_room_device_info(room_id, room_device)
 
         self.entity_description = self.__update_description_defaults(description)
 

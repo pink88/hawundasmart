@@ -13,6 +13,7 @@ from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME, CONF_SC
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers import device_registry
 
 from .const import *
 from .session import get_persistent_session
@@ -64,12 +65,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload config entry."""
-    await async_unload_entry(hass, entry)
-    await async_setup_entry(hass, entry)
-
-
 async def update_listener(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
     """Update listener."""
     # Check if we're switching from separate devices to legacy mode
@@ -84,25 +79,23 @@ async def update_listener(hass: HomeAssistant, config_entry: ConfigEntry) -> Non
 
 async def _cleanup_room_devices(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
     """Remove room devices when switching to legacy mode."""
-    from homeassistant.helpers import device_registry as dr
-    
-    device_registry = dr.async_get(hass)
+    _device_registry = device_registry.async_get(hass)
     
     # Find all room devices for this integration
-    devices = dr.async_entries_for_config_entry(device_registry, config_entry.entry_id)
+    devices = device_registry.async_entries_for_config_entry(_device_registry, config_entry.entry_id)
     
     removed_count = 0
     for device in devices:
         # Check if this is a room device (not the main hub)
         for identifier in device.identifiers:
             if identifier[0] == DOMAIN and "_room_" in str(identifier[1]):
-                _LOGGER.info(f"Removing orphaned room device: {device.name} ({identifier[1]})")
-                device_registry.async_remove_device(device.id)
+                _LOGGER.debug(f"Removing orphaned room device: {device.name} ({identifier[1]})")
+                _device_registry.async_remove_device(device.id)
                 removed_count += 1
                 break
     
     if removed_count > 0:
-        _LOGGER.info(f"Removed {removed_count} orphaned room device(s) when switching to legacy mode")
+        _LOGGER.debug(f"Removed {removed_count} orphaned room device(s) when switching to single device mode")
 
 
 class WundasmartDataUpdateCoordinator(DataUpdateCoordinator):
@@ -115,7 +108,7 @@ class WundasmartDataUpdateCoordinator(DataUpdateCoordinator):
                  wunda_pass: str,
                  update_interval: int,
                  timeout: aiohttp.ClientTimeout,
-                 separate_room_devices: bool = False):
+                 separate_room_devices: bool):
         """Initialize."""
         self._hass = hass
         self._wunda_ip = wunda_ip
