@@ -31,7 +31,7 @@
               "separate_room_devices": "Separate Room Devices"
             },
             "data_description": {
-              "separate_room_devices": "When enabled, each room becomes a separate device. When disabled, all entities are grouped under the hub device (legacy mode). WARNING: Switching from enabled to disabled may leave orphaned room devices that need to be manually removed from Settings > Devices & Services > Devices."
+              "separate_room_devices": "When enabled, separate devices are created for each room. By default, all entities are grouped under a single device."
             },
             "title": "Wundasmart options"
           }
